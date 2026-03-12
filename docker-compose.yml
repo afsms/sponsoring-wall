@@ -11,23 +11,16 @@ services:
       JWT_SECRET: ${JWT_SECRET:-ca6b2ff5d35a69c5fce51c0bb56852aee8d88740a64b1d5afc2aa33fc6c157b2}
     volumes:
       - db_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   rest:
     image: postgrest/postgrest:v12.2.0
     restart: always
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     environment:
       PGRST_DB_URI: postgres://postgres:${POSTGRES_PASSWORD:-0d3c46d9d1e8fd90e4a16ee5b8659990}@db:5432/postgres
-      PGRST_DB_SCHEMAS: public
+      PGRST_DB_SCHEMA: public
       PGRST_DB_ANON_ROLE: anon
-      PGRST_DB_EXTRA_SEARCH_PATH: public
       PGRST_JWT_SECRET: ${JWT_SECRET:-ca6b2ff5d35a69c5fce51c0bb56852aee8d88740a64b1d5afc2aa33fc6c157b2}
 
   frontend:
@@ -47,8 +40,7 @@ services:
     image: ghcr.io/supabase/realtime:v2.78.11
     restart: always
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     environment:
       - PORT=4000
       - DB_HOST=db

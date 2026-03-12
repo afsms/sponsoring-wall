@@ -1,27 +1,19 @@
--- 1. ROLLEN-SETUP
+-- 1. ROLLEN
 DO $$ 
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'anon') THEN
     CREATE ROLE anon NOLOGIN;
   END IF;
-  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'authenticated') THEN
-    CREATE ROLE authenticated NOLOGIN;
-  END IF;
 END $$;
 
--- WICHTIG: Erlaube der API den Rollenwechsel
 GRANT anon TO postgres;
-GRANT authenticated TO postgres;
 
 -- 2. SCHEMA & TABELLEN
 CREATE SCHEMA IF NOT EXISTS public;
 ALTER SCHEMA public OWNER TO postgres;
-GRANT ALL ON SCHEMA public TO postgres;
-GRANT ALL ON SCHEMA public TO anon;
 
--- Tabellen (Fresh Start)
-DROP TABLE IF EXISTS public.sponsors CASCADE;
-CREATE TABLE public.sponsors (
+-- Tabellen anlegen
+CREATE TABLE IF NOT EXISTS public.sponsors (
     id SERIAL PRIMARY KEY,
     full_name TEXT NOT NULL,
     email TEXT NOT NULL,
@@ -34,33 +26,34 @@ CREATE TABLE public.sponsors (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-DROP TABLE IF EXISTS public.project_settings CASCADE;
-CREATE TABLE public.project_settings (
+CREATE TABLE IF NOT EXISTS public.project_settings (
     id SERIAL PRIMARY KEY,
     goal_sq_meters NUMERIC DEFAULT 2480,
     price_per_unit NUMERIC DEFAULT 15.15,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-INSERT INTO public.project_settings (goal_sq_meters, price_per_unit) VALUES (2480, 15.15);
+INSERT INTO public.project_settings (goal_sq_meters, price_per_unit) 
+SELECT 2480, 15.15 WHERE NOT EXISTS (SELECT 1 FROM public.project_settings);
 
--- 3. RECHTE-HAMMER
+-- 3. RECHTE (Der Fix!)
+-- Wir geben anon explizit USAGE auf das Schema und SELECT auf alle Tabellen
+GRANT USAGE ON SCHEMA public TO anon;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO anon;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO anon;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon;
 
--- Sicherheit ausschalten für Test
-ALTER TABLE public.sponsors DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.project_settings DISABLE ROW LEVEL SECURITY;
-
--- 4. SYSTEM-WEITER SUCHPFAD
+-- Suchpfad für anon festlegen
 ALTER ROLE anon SET search_path TO public, extensions;
-ALTER ROLE postgres SET search_path TO public, extensions;
-ALTER DATABASE postgres SET search_path TO public, extensions;
 
--- Realtime
-DROP PUBLICATION IF EXISTS supabase_realtime;
-CREATE PUBLICATION supabase_realtime FOR TABLE public.sponsors;
+-- 4. REALTIME
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+        CREATE PUBLICATION supabase_realtime FOR TABLE public.sponsors;
+    END IF;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
 
--- Cache Reload Signal
+-- PostgREST benachrichtigen
 NOTIFY pgrst, 'reload schema';
