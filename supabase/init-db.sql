@@ -54,8 +54,9 @@ ALTER TABLE public.sponsors DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.project_settings DISABLE ROW LEVEL SECURITY;
 
 -- Suchpfad für alle festlegen
-ALTER ROLE anon SET search_path TO public;
-ALTER ROLE postgres SET search_path TO public;
+ALTER ROLE anon SET search_path TO public, extensions;
+ALTER ROLE postgres SET search_path TO public, extensions;
+ALTER DATABASE postgres SET search_path TO public, extensions;
 
 -- 5. REALTIME (FALLS BENÖTIGT)
 DO $$
