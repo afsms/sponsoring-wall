@@ -1,0 +1,9 @@
+FROM supabase/postgres:15.1.1.78
+
+# Kopiere das Setup direkt in das Image (keine Volumen-Probleme mehr)
+COPY init-db.sql /docker-entrypoint-initdb.d/init-db.sql
+
+# Sicherstellen, dass die Datei lesbar ist
+USER root
+RUN chmod 644 /docker-entrypoint-initdb.d/init-db.sql
+USER postgres
