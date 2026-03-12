@@ -1,86 +1,76 @@
-
 services:
   db:
     image: supabase/postgres:15.1.1.78
     restart: always
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-0d3c46d9d1e8fd90e4a16ee5b8659990}
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
-      JWT_SECRET: ${JWT_SECRET:-12345678901234567890123456789012}
-      REALTIME_ENCRYPTION_KEY: ${REALTIME_ENCRYPTION_KEY:-1234567890123456}
-    volumes:
-      - ./supabase/init-db.sql:/docker-entrypoint-initdb.d/z99-init-db.sql
-      - db_data:/var/lib/postgresql/data
+      JWT_SECRET: ${JWT_SECRET:-ca6b2ff5d35a69c5fce51c0bb56852aee8d88740a64b1d5afc2aa33fc6c157b2}
+    # Wir nutzen ein Shell-Skript beim Start, um die Tabellen anzulegen
+    command: 
+      - /bin/bash
+      - -c
+      - |
+        /usr/local/bin/docker-entrypoint.sh postgres &
+        echo "Waiting for postgres to start..."
+        until pg_isready -U postgres; do sleep 2; done
+        echo "Creating tables..."
+        psql -U postgres -d postgres -c "
+          ALTER USER postgres WITH SUPERUSER;
+          CREATE TABLE IF NOT EXISTS public.sponsors (
+              id SERIAL PRIMARY KEY,
+              full_name VARCHAR(255) NOT NULL,
+              email VARCHAR(255) NOT NULL,
+              phone VARCHAR(255),
+              iban VARCHAR(255),
+              sq_meters INTEGER NOT NULL DEFAULT 1,
+              mandate_accepted BOOLEAN NOT NULL DEFAULT FALSE,
+              is_anonymous BOOLEAN NOT NULL DEFAULT FALSE,
+              total_amount NUMERIC(10, 2) NOT NULL,
+              created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+          );
+          CREATE TABLE IF NOT EXISTS public.project_settings (
+              id SERIAL PRIMARY KEY,
+              goal_sq_meters NUMERIC(10, 2) DEFAULT 2480,
+              price_per_unit NUMERIC(10, 2) DEFAULT 15.15,
+              updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+          );
+          INSERT INTO public.project_settings (goal_sq_meters, price_per_unit) 
+          SELECT 2480, 15.15 WHERE NOT EXISTS (SELECT 1 FROM public.project_settings);
+          
+          DO \$$ BEGIN
+            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'anon') THEN
+              CREATE ROLE anon NOLOGIN NOINHERIT;
+            END IF;
+          END \$$;
+          GRANT USAGE ON SCHEMA public TO anon;
+          GRANT ALL ON public.sponsors TO anon;
+          GRANT ALL ON public.project_settings TO anon;
+          GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon;
+          ALTER TABLE public.sponsors ENABLE ROW LEVEL SECURITY;
+          -- Einfache Policy: Jeder darf lesen/schreiben für den Test
+          DROP POLICY IF EXISTS \"Allow all\" ON public.sponsors;
+          CREATE POLICY \"Allow all\" ON public.sponsors FOR ALL TO anon USING (true) WITH CHECK (true);
+        "
+        wait
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  realtime-setup:
-    image: postgres:15-alpine
-    restart: "no"
-    depends_on:
-      - db
-      - realtime
-    environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
-      JWT_SECRET: ${JWT_SECRET:-12345678901234567890123456789012}
-      REALTIME_ENCRYPTION_KEY: ${REALTIME_ENCRYPTION_KEY:-1234567890123456}
-    volumes:
-      - ./scripts/init-realtime.sh:/init-realtime.sh
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        echo "Waiting for Postgres..."
-        until PGPASSWORD=$$POSTGRES_PASSWORD psql -h db -U postgres -d postgres -c "SELECT 1 FROM public.sponsors;" > /dev/null 2>&1; do
-          sleep 2
-        done
-        chmod +x /init-realtime.sh
-        /init-realtime.sh
-
-  kong:
-    image: kong:2.8.1-alpine
-    restart: always
-    environment:
-      KONG_DATABASE: "off"
-      KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yml
-    volumes:
-      - ./supabase/kong.yml:/etc/kong/kong.yml
-
   rest:
     image: postgrest/postgrest:v12.2.0
     restart: always
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
-      PGRST_DB_URI: postgres://postgres:${POSTGRES_PASSWORD:-postgrespassword}@db:5432/postgres
+      PGRST_DB_URI: postgres://postgres:${POSTGRES_PASSWORD:-0d3c46d9d1e8fd90e4a16ee5b8659990}@db:5432/postgres
       PGRST_DB_SCHEMA: public
       PGRST_DB_ANON_ROLE: anon
-      PGRST_JWT_SECRET: ${JWT_SECRET:-12345678901234567890123456789012}
-
-  realtime:
-    image: ghcr.io/supabase/realtime:v2.78.11
-    restart: always
-    environment:
-      - PORT=4000
-      - HOSTNAME=localhost
-      - DB_HOST=db
-      - DB_NAME=postgres
-      - DB_USER=postgres
-      - DB_PASSWORD=${POSTGRES_PASSWORD:-postgrespassword}
-      - DB_PORT=5432
-      - DB_SSL=false
-      - DB_URI=postgres://postgres:${POSTGRES_PASSWORD:-postgrespassword}@db:5432/postgres?sslmode=disable
-      - JWT_SECRET=${JWT_SECRET:-12345678901234567890123456789012}
-      - API_JWT_SECRET=${JWT_SECRET:-12345678901234567890123456789012}
-      - METRICS_JWT_SECRET=${JWT_SECRET:-12345678901234567890123456789012}
-      - SECRET_KEY_BASE=${SECRET_KEY_BASE:-supersecretkeybase64charslong1234567890123456789012345678901234}
-      - ERL_NODE_NAME=realtime@127.0.0.1
-      - APP_NAME=realtime
-      - REPLICATION_MODE=PUBLICATION
-      - REPLICATION_SLOT=realtime_slot
-      - DB_ENC_KEY=${REALTIME_ENCRYPTION_KEY:-1234567890123456}
+      PGRST_JWT_SECRET: ${JWT_SECRET:-ca6b2ff5d35a69c5fce51c0bb56852aee8d88740a64b1d5afc2aa33fc6c157b2}
 
   frontend:
     build:
@@ -93,7 +83,22 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - kong
+      - rest
 
-volumes:
-  db_data:
+  realtime:
+    image: ghcr.io/supabase/realtime:v2.78.11
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - PORT=4000
+      - DB_HOST=db
+      - DB_NAME=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-0d3c46d9d1e8fd90e4a16ee5b8659990}
+      - DB_PORT=5432
+      - DB_SSL=false
+      - JWT_SECRET=${JWT_SECRET:-ca6b2ff5d35a69c5fce51c0bb56852aee8d88740a64b1d5afc2aa33fc6c157b2}
+      - REPLICATION_MODE=PUBLICATION
+      - DB_ENC_KEY=${REALTIME_ENCRYPTION_KEY:-d59dfcf1ced0152a}
