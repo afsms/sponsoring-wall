@@ -36,7 +36,7 @@ services:
       - -c
       - |
         echo "Waiting for Postgres..."
-        until PGPASSWORD=$$POSTGRES_PASSWORD psql -h db -U postgres -d postgres -c "SELECT 1 FROM public.tenants;" > /dev/null 2>&1; do
+        until PGPASSWORD=$$POSTGRES_PASSWORD psql -h db -U postgres -d postgres -c "SELECT 1 FROM public.sponsors;" > /dev/null 2>&1; do
           sleep 2
         done
         chmod +x /init-realtime.sh
