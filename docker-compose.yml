@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   db:
     image: supabase/postgres:15.1.1.78
@@ -23,7 +25,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-12345678901234567890123456789012}
       REALTIME_ENCRYPTION_KEY: ${REALTIME_ENCRYPTION_KEY:-1234567890123456}
     volumes:
-      - ./init-realtime.sh:/init-realtime.sh
+      - ./scripts/init-realtime.sh:/init-realtime.sh
     entrypoint:
       - /bin/sh
       - -c
@@ -32,6 +34,7 @@ services:
         until PGPASSWORD=$$POSTGRES_PASSWORD psql -h db -U postgres -d postgres -c "SELECT 1 FROM public.tenants;" > /dev/null 2>&1; do
           sleep 2
         done
+        chmod +x /init-realtime.sh
         /init-realtime.sh
 
   kong:
