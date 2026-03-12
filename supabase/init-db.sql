@@ -1,16 +1,17 @@
 -- 1. ROLLEN & BASIS
-DO $$ BEGIN
+DO $$ 
+BEGIN
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'anon') THEN
     CREATE ROLE anon NOLOGIN;
   END IF;
 END $$;
 GRANT anon TO postgres;
 
--- 2. SCHEMAS
-CREATE SCHEMA IF NOT EXISTS api;
+-- 2. SCHEMA & TABELLEN
 CREATE SCHEMA IF NOT EXISTS public;
+ALTER SCHEMA public OWNER TO postgres;
 
--- 3. TABELLEN (Erzwungen in beiden Schemas)
+-- Tabellen sicherstellen
 CREATE TABLE IF NOT EXISTS public.sponsors (
     id SERIAL PRIMARY KEY,
     full_name TEXT NOT NULL,
@@ -31,27 +32,27 @@ CREATE TABLE IF NOT EXISTS public.project_settings (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Kopie in api schema
-CREATE TABLE IF NOT EXISTS api.sponsors AS TABLE public.sponsors WITH NO DATA;
-INSERT INTO api.sponsors SELECT * FROM public.sponsors ON CONFLICT DO NOTHING;
-CREATE TABLE IF NOT EXISTS api.project_settings AS TABLE public.project_settings WITH NO DATA;
-INSERT INTO api.project_settings SELECT * FROM public.project_settings ON CONFLICT DO NOTHING;
-
--- Seed falls leer
 INSERT INTO public.project_settings (goal_sq_meters, price_per_unit) 
 SELECT 2480, 15.15 WHERE NOT EXISTS (SELECT 1 FROM public.project_settings);
 
--- 4. BERECHTIGUNGEN (RADIKAL)
+-- 3. BERECHTIGUNGEN (Radikal & Direkt)
 GRANT USAGE ON SCHEMA public TO anon;
-GRANT USAGE ON SCHEMA api TO anon;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO anon;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA api TO anon;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO anon;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA api TO anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon;
 
--- 5. SUCHPFAD
-ALTER ROLE anon SET search_path TO api, public;
-ALTER DATABASE postgres SET search_path TO api, public;
+-- Suchpfad für alle festlegen
+ALTER ROLE anon SET search_path TO public, extensions;
+ALTER ROLE postgres SET search_path TO public, extensions;
+ALTER DATABASE postgres SET search_path TO public, extensions;
 
--- 6. CACHE RELOAD
+-- 4. REALTIME (Publication)
+DO $$
+BEGIN
+    DROP PUBLICATION IF EXISTS supabase_realtime;
+    CREATE PUBLICATION supabase_realtime FOR TABLE public.sponsors;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
+
+-- Cache-Update erzwingen
 NOTIFY pgrst, 'reload schema';
