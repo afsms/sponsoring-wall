@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# Environment & Secrets
+.env
+.env.local
+.env.production
+*.local
+enc_output.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dev/Debug files (not needed in production)
+realtime-main/
+realtime.zip
+realtime.sql
+realtime_schema.sql
+initial-schema.sql
+apply-encrypted-realtime.sql
+init-realtime-final.sql
+run_migrations.exs
+npm-output.log
+code_*.html
+screen_*.png
+
+# Dev scripts (not needed in production)
+encrypt.js
+encrypt-settings.js
+fix-realtime-meta.js
+simulate-registration.js
+live-dashboard-test.js
+load-test.js
+
+# Docker volumes
+db_data/

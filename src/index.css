@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+@theme {
+  --color-neon-green: #00ff00;
+  --color-neon-red: #ff3c3c;
+  --color-dark-bg: #050505;
+  --color-dark-sidebar: #0a0a0c;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #050505;
+  color: white;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Registration page inputs get dark text (light backgrounds) */
+.register-input {
+  color: #0c151a !important;
+}
+
+.register-input::placeholder {
+  color: #9ca3af !important;
+  font-weight: 500;
+}
+
+.dashboard-container {
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+@utility glow-green {
+  filter: drop-shadow(0 0 8px rgba(0, 255, 0, 0.6)) drop-shadow(0 0 15px rgba(0, 255, 0, 0.3));
+}
+
+@utility glow-red {
+  filter: drop-shadow(0 0 4px rgba(255, 60, 60, 0.4));
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Subtle background pattern */
+.bg-mesh {
+  background-image: radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.02) 1px, transparent 0);
+  background-size: 40px 40px;
+}

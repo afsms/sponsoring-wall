@@ -1,0 +1,42 @@
+_format_version: "1.1"
+services:
+  - name: postgrest
+    url: http://rest:3000
+    routes:
+      - name: postgrest-route
+        paths:
+          - /rest/v1
+        plugins:
+          - name: cors
+            config:
+              origins: ["*"]
+              methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS", "PUT"]
+              headers: ["*"]
+              exposed_headers: ["*"]
+              credentials: true
+
+  - name: realtime
+    url: http://realtime:4000
+    routes:
+      - name: realtime-websocket
+        paths:
+          - /realtime/v1/websocket
+        strip_path: true
+      - name: realtime-api
+        paths:
+          - /realtime/v1/api
+        strip_path: true
+    plugins:
+      - name: cors
+        config:
+          origins: ["*"]
+          methods: ["GET", "POST", "OPTIONS"]
+          headers: ["*"]
+          exposed_headers: ["*"]
+          credentials: true
+      - name: request-transformer
+        config:
+          replace:
+            uri: /socket/websocket # Force websocket path
+        # Only apply to the websocket route
+    # Note: Kong 2.x request-transformer is per route or service
