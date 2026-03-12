@@ -58,3 +58,6 @@ BEGIN
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
+
+-- Signal an PostgREST senden, den Cache zu aktualisieren
+NOTIFY pgrst, 'reload schema';
