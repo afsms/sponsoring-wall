@@ -15,7 +15,9 @@ services:
       test: ["CMD", "pg_isready", "-U", "postgres", "-d", "postgres"]
       interval: 10s
       timeout: 10s
-      retries: 10 # 10 Versuche x 10 Sek = 100 Sekunden Zeit zum Booten
+      retries: 10
+      start_period: 30s # Gibt der DB 30 Sekunden Zeit zum Booten bevor der Check zählt
+ # 10 Versuche x 10 Sek = 100 Sekunden Zeit zum Booten
 
   rest:
     image: postgrest/postgrest:v12.2.0
