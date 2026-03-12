@@ -11,8 +11,8 @@ services:
             config:
               origins: ["*"]
               methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS", "PUT"]
-              headers: ["*"]
-              exposed_headers: ["*"]
+              headers: ["Content-Type", "Authorization", "apikey", "X-Client-Info", "Prefer"]
+              exposed_headers: ["Content-Range", "X-Total-Count"]
               credentials: true
 
   - name: realtime
