@@ -57,7 +57,7 @@ const Register = () => {
             setSubmitted(true);
         } else {
             console.warn("Supabase insert error:", error);
-            alert('Fehler beim Speichern. Bitte versuche es erneut.');
+            alert(`Fehler beim Speichern: ${error.message || 'Unbekannter Fehler'}`);
         }
         setLoading(false);
     };

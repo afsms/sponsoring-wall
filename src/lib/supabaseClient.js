@@ -1,10 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'http://localhost:8000';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImF1ZCI6ImF1dGhlbnRpY2F0ZWQiLCJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc3Mjg4NjA0MiwiZXhwIjoxODA0NDIyMDQyfQ.Y7tNBY9CwS0f2rOwuSlTWd-fm0Jx9lkAx8I0BZkBGck';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (import.meta.env.MODE === 'production') {
+  console.log('--- Supabase Production Config ---');
+  console.log('URL:', SUPABASE_URL);
+  console.log('Key defined:', !!SUPABASE_ANON_KEY);
+}
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY environment variables');
+  console.error('CRITICAL: Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY!');
 }
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
