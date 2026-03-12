@@ -4,7 +4,7 @@ ALTER USER postgres WITH SUPERUSER;
 DO $$ 
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'anon') THEN
-    CREATE ROLE anon NOLOGIN;
+    CREATE ROLE anon NOLOGIN NOINHERIT;
   END IF;
 END
 $$;
@@ -39,10 +39,11 @@ CREATE TABLE public.project_settings (
 INSERT INTO public.project_settings (goal_sq_meters, price_per_unit) VALUES (2480, 15.15);
 
 -- 3. BERECHTIGUNGEN (Der Fix!)
+-- Gib anon RECHTE auf ALLES im public Schema
 GRANT USAGE ON SCHEMA public TO anon;
-GRANT ALL ON public.sponsors TO anon;
-GRANT ALL ON public.project_settings TO anon;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon;
 
 -- Suchpfad für anon festlegen (Erzwungen)
 ALTER ROLE anon SET search_path TO public, extensions;
