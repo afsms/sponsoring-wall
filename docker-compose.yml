@@ -10,13 +10,12 @@ services:
       POSTGRES_USER: postgres
       JWT_SECRET: ${JWT_SECRET:-ca6b2ff5d35a69c5fce51c0bb56852aee8d88740a64b1d5afc2aa33fc6c157b2}
     volumes:
-      - ./supabase/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
       - db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "postgres"]
+      interval: 10s
+      timeout: 10s
+      retries: 10 # 10 Versuche x 10 Sek = 100 Sekunden Zeit zum Booten
 
   rest:
     image: postgrest/postgrest:v12.2.0
