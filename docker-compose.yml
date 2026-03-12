@@ -22,7 +22,6 @@ services:
     restart: always
     depends_on:
       db:
-        # Gelockert für stabilen Start
         condition: service_started
     environment:
       PGRST_DB_URI: postgres://postgres:${POSTGRES_PASSWORD:-0d3c46d9d1e8fd90e4a16ee5b8659990}@db:5432/postgres
