@@ -28,6 +28,7 @@ services:
       # WICHTIG: Eigenes Schema für die API
       PGRST_DB_SCHEMAS: api
       PGRST_DB_ANON_ROLE: anon
+      PGRST_DB_EXTRA_SEARCH_PATH: api
       PGRST_JWT_SECRET: ${JWT_SECRET:-ca6b2ff5d35a69c5fce51c0bb56852aee8d88740a64b1d5afc2aa33fc6c157b2}
 
   frontend:
