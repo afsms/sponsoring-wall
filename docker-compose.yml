@@ -37,8 +37,6 @@ services:
   kong:
     image: kong:2.8.1-alpine
     restart: always
-    ports:
-      - "8000:8000"
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yml
