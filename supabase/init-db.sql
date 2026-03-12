@@ -1,4 +1,4 @@
--- 1. ROLLEN & BASIS
+-- 1. ROLLEN
 DO $$ 
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'anon') THEN
@@ -7,11 +7,11 @@ BEGIN
 END $$;
 GRANT anon TO postgres;
 
--- 2. SCHEMA & TABELLEN
+-- 2. SCHEMAS
 CREATE SCHEMA IF NOT EXISTS public;
-ALTER SCHEMA public OWNER TO postgres;
+CREATE SCHEMA IF NOT EXISTS api;
 
--- Tabellen sicherstellen
+-- 3. TABELLEN (public)
 CREATE TABLE IF NOT EXISTS public.sponsors (
     id SERIAL PRIMARY KEY,
     full_name TEXT NOT NULL,
@@ -35,18 +35,24 @@ CREATE TABLE IF NOT EXISTS public.project_settings (
 INSERT INTO public.project_settings (goal_sq_meters, price_per_unit) 
 SELECT 2480, 15.15 WHERE NOT EXISTS (SELECT 1 FROM public.project_settings);
 
--- 3. BERECHTIGUNGEN (Radikal & Direkt)
+-- 4. TABELLEN (api) - Spiegeln
+CREATE TABLE IF NOT EXISTS api.sponsors (LIKE public.sponsors INCLUDING ALL);
+CREATE TABLE IF NOT EXISTS api.project_settings (LIKE public.project_settings INCLUDING ALL);
+
+-- 5. RECHTE (Massiv)
 GRANT USAGE ON SCHEMA public TO anon;
+GRANT USAGE ON SCHEMA api TO anon;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO anon;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA api TO anon;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO anon;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA api TO anon;
 
--- Suchpfad für alle festlegen
-ALTER ROLE anon SET search_path TO public, extensions;
-ALTER ROLE postgres SET search_path TO public, extensions;
-ALTER DATABASE postgres SET search_path TO public, extensions;
+-- Globaler Suchpfad
+ALTER ROLE anon SET search_path TO public, api, extensions;
+ALTER ROLE postgres SET search_path TO public, api, extensions;
+ALTER DATABASE postgres SET search_path TO public, api, extensions;
 
--- 4. REALTIME (Publication)
+-- 6. REALTIME
 DO $$
 BEGIN
     DROP PUBLICATION IF EXISTS supabase_realtime;
@@ -54,5 +60,5 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
--- Cache-Update erzwingen
+-- PostgREST benachrichtigen
 NOTIFY pgrst, 'reload schema';
