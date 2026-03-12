@@ -6,6 +6,7 @@ services:
       - name: postgrest-route
         paths:
           - /rest/v1
+        strip_path: false
         plugins:
           - name: cors
             config:
