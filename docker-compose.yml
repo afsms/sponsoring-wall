@@ -11,6 +11,20 @@ services:
       JWT_SECRET: ${JWT_SECRET:-ca6b2ff5d35a69c5fce51c0bb56852aee8d88740a64b1d5afc2aa33fc6c157b2}
     volumes:
       - db_data:/var/lib/postgresql/data
+      # Wir legen das Script zusätzlich an einen anderen Ort für den manuellen Start
+      - ./supabase/init-db.sql:/init.sql
+    command: 
+      - /bin/bash
+      - -c
+      - |
+        # Startet Postgres im Hintergrund
+        /usr/local/bin/docker-entrypoint.sh postgres &
+        # Wartet bis Postgres bereit ist
+        until pg_isready -U postgres; do sleep 2; done
+        # Erzwingt die Tabellen-Erstellung
+        psql -U postgres -d postgres -f /init.sql
+        # Hält den Container am Leben
+        wait
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
