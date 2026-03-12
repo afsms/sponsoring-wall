@@ -1,8 +1,8 @@
--- Grundlegende Einstellungen
-ALTER USER postgres WITH SUPERUSER;
-SET search_path = public, extensions;
+-- 1. Alles auf Null für das public Schema
+CREATE SCHEMA IF NOT EXISTS public;
+ALTER SCHEMA public OWNER TO postgres;
 
--- Rollen sicherstellen
+-- 2. Rollen sicherstellen
 DO $$ 
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'anon') THEN
@@ -14,16 +14,8 @@ BEGIN
 END
 $$;
 
--- Schema-Rechte
-CREATE SCHEMA IF NOT EXISTS public;
-GRANT USAGE ON SCHEMA public TO anon;
-GRANT USAGE ON SCHEMA public TO authenticated;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO postgres;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres;
-
--- Tabellen anlegen (Explizit mit public.)
-DROP TABLE IF EXISTS public.sponsors CASCADE;
-CREATE TABLE public.sponsors (
+-- 3. Tabellen anlegen
+CREATE TABLE IF NOT EXISTS public.sponsors (
     id SERIAL PRIMARY KEY,
     full_name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
@@ -36,28 +28,43 @@ CREATE TABLE public.sponsors (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-DROP TABLE IF EXISTS public.project_settings CASCADE;
-CREATE TABLE public.project_settings (
+CREATE TABLE IF NOT EXISTS public.project_settings (
     id SERIAL PRIMARY KEY,
     goal_sq_meters NUMERIC(10, 2) DEFAULT 2480,
     price_per_unit NUMERIC(10, 2) DEFAULT 15.15,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Seed Daten
-INSERT INTO public.project_settings (goal_sq_meters, price_per_unit) VALUES (2480, 15.15);
+-- Seed Daten falls leer
+INSERT INTO public.project_settings (goal_sq_meters, price_per_unit) 
+SELECT 2480, 15.15 
+WHERE NOT EXISTS (SELECT 1 FROM public.project_settings);
 
--- Berechtigungen für anon (Webseite)
-GRANT SELECT, INSERT ON public.sponsors TO anon;
-GRANT SELECT ON public.project_settings TO anon;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon;
+-- 4. BERECHTIGUNGEN (Der wichtigste Teil)
+-- Dem Benutzer anon explizit Zugriff auf ALLES im public Schema geben
+GRANT USAGE ON SCHEMA public TO anon;
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO anon;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO anon;
+GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO anon;
 
--- Realtime vorbereiten
-ALTER SCHEMA realtime OWNER TO postgres;
+-- Sicherstellen, dass neue Tabellen auch automatisch Rechte bekommen
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon;
+
+-- 5. Suchpfad für die Rollen festlegen
+ALTER ROLE anon SET search_path TO public;
+ALTER ROLE postgres SET search_path TO public;
+
+-- 6. Realtime vorbereiten
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
         CREATE PUBLICATION supabase_realtime;
     END IF;
 END $$;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.sponsors;
+-- Versuchen die Tabelle hinzuzufügen (ignoriert Fehler falls schon drin)
+BEGIN;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.sponsors;
+COMMIT;
+EXCEPTION WHEN OTHERS THEN ROLLBACK;

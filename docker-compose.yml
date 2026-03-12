@@ -7,53 +7,9 @@ services:
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
       JWT_SECRET: ${JWT_SECRET:-ca6b2ff5d35a69c5fce51c0bb56852aee8d88740a64b1d5afc2aa33fc6c157b2}
-    # Wir nutzen ein Shell-Skript beim Start, um die Tabellen anzulegen
-    command: 
-      - /bin/bash
-      - -c
-      - |
-        /usr/local/bin/docker-entrypoint.sh postgres &
-        echo "Waiting for postgres to start..."
-        until pg_isready -U postgres; do sleep 2; done
-        echo "Creating tables..."
-        psql -U postgres -d postgres -c "
-          ALTER USER postgres WITH SUPERUSER;
-          CREATE TABLE IF NOT EXISTS public.sponsors (
-              id SERIAL PRIMARY KEY,
-              full_name VARCHAR(255) NOT NULL,
-              email VARCHAR(255) NOT NULL,
-              phone VARCHAR(255),
-              iban VARCHAR(255),
-              sq_meters INTEGER NOT NULL DEFAULT 1,
-              mandate_accepted BOOLEAN NOT NULL DEFAULT FALSE,
-              is_anonymous BOOLEAN NOT NULL DEFAULT FALSE,
-              total_amount NUMERIC(10, 2) NOT NULL,
-              created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-          );
-          CREATE TABLE IF NOT EXISTS public.project_settings (
-              id SERIAL PRIMARY KEY,
-              goal_sq_meters NUMERIC(10, 2) DEFAULT 2480,
-              price_per_unit NUMERIC(10, 2) DEFAULT 15.15,
-              updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-          );
-          INSERT INTO public.project_settings (goal_sq_meters, price_per_unit) 
-          SELECT 2480, 15.15 WHERE NOT EXISTS (SELECT 1 FROM public.project_settings);
-          
-          DO \$$ BEGIN
-            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'anon') THEN
-              CREATE ROLE anon NOLOGIN NOINHERIT;
-            END IF;
-          END \$$;
-          GRANT USAGE ON SCHEMA public TO anon;
-          GRANT ALL ON public.sponsors TO anon;
-          GRANT ALL ON public.project_settings TO anon;
-          GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon;
-          ALTER TABLE public.sponsors ENABLE ROW LEVEL SECURITY;
-          -- Einfache Policy: Jeder darf lesen/schreiben für den Test
-          DROP POLICY IF EXISTS \"Allow all\" ON public.sponsors;
-          CREATE POLICY \"Allow all\" ON public.sponsors FOR ALL TO anon USING (true) WITH CHECK (true);
-        "
-        wait
+    volumes:
+      - ./supabase/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - db_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
       interval: 5s
@@ -102,3 +58,6 @@ services:
       - JWT_SECRET=${JWT_SECRET:-ca6b2ff5d35a69c5fce51c0bb56852aee8d88740a64b1d5afc2aa33fc6c157b2}
       - REPLICATION_MODE=PUBLICATION
       - DB_ENC_KEY=${REALTIME_ENCRYPTION_KEY:-d59dfcf1ced0152a}
+
+volumes:
+  db_data:
