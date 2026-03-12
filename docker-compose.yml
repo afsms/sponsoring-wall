@@ -13,6 +13,11 @@ services:
     volumes:
       - ./supabase/init-db.sql:/docker-entrypoint-initdb.d/z99-init-db.sql
       - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   realtime-setup:
     image: postgres:15-alpine
