@@ -1,4 +1,4 @@
--- 1. ROLLEN
+-- 1. ROLLEN-SETUP
 DO $$ 
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'anon') THEN
@@ -6,13 +6,14 @@ BEGIN
   END IF;
 END $$;
 
+-- Erlaube Admin-Rolle für API
 GRANT anon TO postgres;
 
 -- 2. SCHEMA & TABELLEN
 CREATE SCHEMA IF NOT EXISTS public;
 ALTER SCHEMA public OWNER TO postgres;
 
--- Tabellen anlegen
+-- Tabellen sicherstellen (mit public Präfix)
 CREATE TABLE IF NOT EXISTS public.sponsors (
     id SERIAL PRIMARY KEY,
     full_name TEXT NOT NULL,
@@ -36,24 +37,25 @@ CREATE TABLE IF NOT EXISTS public.project_settings (
 INSERT INTO public.project_settings (goal_sq_meters, price_per_unit) 
 SELECT 2480, 15.15 WHERE NOT EXISTS (SELECT 1 FROM public.project_settings);
 
--- 3. RECHTE (Der Fix!)
--- Wir geben anon explizit USAGE auf das Schema und SELECT auf alle Tabellen
+-- 3. RECHTE-HAMMER (Der Fix für 42P01)
 GRANT USAGE ON SCHEMA public TO anon;
+GRANT USAGE ON SCHEMA public TO public;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO anon;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO anon;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon;
 
--- Suchpfad für anon festlegen
+-- SYSTEM-WEITER SUCHPFAD (Zwingend für PostgREST)
 ALTER ROLE anon SET search_path TO public, extensions;
+ALTER ROLE postgres SET search_path TO public, extensions;
+ALTER DATABASE postgres SET search_path TO public, extensions;
 
 -- 4. REALTIME
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
-        CREATE PUBLICATION supabase_realtime FOR TABLE public.sponsors;
-    END IF;
+    DROP PUBLICATION IF EXISTS supabase_realtime;
+    CREATE PUBLICATION supabase_realtime FOR TABLE public.sponsors;
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
--- PostgREST benachrichtigen
+-- POSTGREST ZWINGEN DEN CACHE NEU ZU LADEN
 NOTIFY pgrst, 'reload schema';
