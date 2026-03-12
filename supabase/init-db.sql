@@ -1,27 +1,19 @@
--- 1. ROLLEN-SETUP (Supabase-kompatibel)
--- Wir stellen sicher, dass die Rollen existieren und die richtigen Attribute haben
+-- 1. ROLLEN-SETUP
+ALTER USER postgres WITH SUPERUSER;
+
 DO $$ 
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'anon') THEN
     CREATE ROLE anon NOLOGIN NOINHERIT;
   END IF;
-  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'authenticated') THEN
-    CREATE ROLE authenticated NOLOGIN NOINHERIT;
-  END IF;
 END
 $$;
 
--- WICHTIG: Erlaube dem Admin-User die Identität der Rollen anzunehmen
-GRANT anon TO postgres;
-GRANT authenticated TO postgres;
-
--- 2. SCHEMA-REINIGUNG
+-- 2. SCHEMA & TABELLEN
 CREATE SCHEMA IF NOT EXISTS public;
 ALTER SCHEMA public OWNER TO postgres;
-GRANT USAGE ON SCHEMA public TO anon;
-GRANT USAGE ON SCHEMA public TO authenticated;
 
--- 3. TABELLEN (NEU ANLEGEN)
+-- Tabellen (Fresh Start)
 DROP TABLE IF EXISTS public.sponsors CASCADE;
 CREATE TABLE public.sponsors (
     id SERIAL PRIMARY KEY,
@@ -46,29 +38,24 @@ CREATE TABLE public.project_settings (
 
 INSERT INTO public.project_settings (goal_sq_meters, price_per_unit) VALUES (2480, 15.15);
 
--- 4. BERECHTIGUNGEN (DER ENTSCHEIDENDE TEIL)
--- Wir geben anon explizit ALLE Rechte für den Test
-GRANT ALL ON public.sponsors TO anon;
-GRANT ALL ON public.project_settings TO anon;
-GRANT ALL ON public.sponsors TO authenticated;
-GRANT ALL ON public.project_settings TO authenticated;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+-- 3. BERECHTIGUNGEN (Der Fix!)
+-- Gib anon RECHTE auf ALLES im public Schema
+GRANT USAGE ON SCHEMA public TO anon;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon;
 
--- Suchpfad für die Session erzwingen
+-- Suchpfad für anon festlegen (Erzwungen)
 ALTER ROLE anon SET search_path TO public, extensions;
 ALTER ROLE postgres SET search_path TO public, extensions;
-ALTER DATABASE postgres SET search_path TO public, extensions;
 
--- Statistiken aktualisieren, damit PostgREST nicht verwirrt ist
-ANALYZE public.sponsors;
-ANALYZE public.project_settings;
-
--- 5. REALTIME
+-- 4. REALTIME
 DO $$
 BEGIN
     DROP PUBLICATION IF EXISTS supabase_realtime;
     CREATE PUBLICATION supabase_realtime FOR TABLE public.sponsors;
-EXCEPTION WHEN OTHERS THEN 
-    RAISE NOTICE 'Publication setup failed, but continuing...';
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
+
+-- PostgREST Cache Leeren
+NOTIFY pgrst, 'reload schema';
