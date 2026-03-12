@@ -46,4 +46,4 @@ ENV PORT=80
 EXPOSE 80
 
 # Use a shell script to replace the port in the config and then start nginx
-CMD ["/bin/sh", "-c", "sed -i 's/listen 80;/listen '\"$PORT\"';/g' /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
+CMD ["/bin/sh", "-c", "sed -i \"s/listen 80;/listen ${PORT};/g\" /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
