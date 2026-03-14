@@ -23,14 +23,23 @@ command -v openssl >/dev/null 2>&1 || { echo "❌ OpenSSL nicht gefunden. Bitte 
 command -v node >/dev/null 2>&1 || { echo "❌ Node.js nicht gefunden. Bitte installieren."; exit 1; }
 command -v python3 >/dev/null 2>&1 || { echo "❌ Python3 nicht gefunden. Bitte installieren."; exit 1; }
 
+# pycryptodome installieren falls nötig
+if ! python3 -c "from Crypto.Cipher import AES" 2>/dev/null && \
+   ! python3 -c "from Cryptodome.Cipher import AES" 2>/dev/null; then
+    echo "  ℹ️  Installiere pycryptodome..."
+    sudo apt-get install -y python3-pycryptodome 2>/dev/null || \
+    sudo apt-get install -y python3-pip 2>/dev/null && \
+    pip3 install pycryptodome --break-system-packages 2>/dev/null || true
+fi
+
 echo "✅ Alle Voraussetzungen erfüllt."
 echo ""
 
 # ------------------------------------------------------------
-# Domain abfragen
+# Konfiguration abfragen
 # ------------------------------------------------------------
 echo "▶ Konfiguration:"
-read -p "  Deine Domain (z.B. sponsoring.example.com): " DOMAIN
+read -p "  Deine Domain oder IP (z.B. sponsoring.example.com oder 192.168.1.100): " DOMAIN
 if [ -z "$DOMAIN" ]; then
     echo "❌ Domain darf nicht leer sein."
     exit 1
@@ -65,13 +74,11 @@ echo ""
 # ------------------------------------------------------------
 echo "▶ Generiere JWT Keys..."
 
-# Temporäres Node Script
 cat > /tmp/gen_jwt.js << EOF
 const crypto = require('crypto');
-
 const secret = '${JWT_SECRET}';
 const now = Math.floor(Date.now() / 1000);
-const exp = now + (10 * 365 * 24 * 60 * 60); // 10 Jahre
+const exp = now + (10 * 365 * 24 * 60 * 60);
 
 function base64url(str) {
     return Buffer.from(str).toString('base64')
@@ -109,18 +116,12 @@ echo ""
 echo "▶ Verschlüssele Secrets für Realtime..."
 
 python3 -c "
-import sys
-sys.path.insert(0, '')
+import sys, base64
+
 try:
     from Crypto.Cipher import AES
 except ImportError:
-    try:
-        from Cryptodome.Cipher import AES
-    except ImportError:
-        subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pycryptodome', '-q'])
-        from Cryptodome.Cipher import AES
-
-import base64
+    from Cryptodome.Cipher import AES
 
 key = b'${DB_ENC_KEY}'
 
@@ -176,9 +177,10 @@ REALTIME_ENCRYPTION_KEY=${DB_ENC_KEY}
 SECRET_KEY_BASE=${SECRET_KEY_BASE}
 
 # --- FRONTEND ---
-VITE_SUPABASE_URL=https://${DOMAIN}
+VITE_SUPABASE_URL=http://${DOMAIN}:8000
 VITE_SUPABASE_ANON_KEY=${ANON_KEY}
 VITE_ADMIN_PASSWORD=${ADMIN_PASSWORD}
+
 # --- ADMIN ---
 ADMIN_PASSWORD=${ADMIN_PASSWORD}
 
@@ -327,6 +329,8 @@ services:
     container_name: sponsoring-wall-kong
     image: kong:2.8.1-alpine
     restart: always
+    ports:
+      - "8000:8000"
     depends_on:
       - rest
       - realtime
@@ -341,69 +345,20 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - VITE_SUPABASE_URL=https://\${DOMAIN}
+        - VITE_SUPABASE_URL=http://\${DOMAIN}:8000
         - VITE_SUPABASE_ANON_KEY=\${ANON_KEY}
         - VITE_ADMIN_PASSWORD=\${ADMIN_PASSWORD}
-    restart: always
-    depends_on:
-      - kong
-
-  caddy:
-    image: caddy:2-alpine
-    restart: always
     ports:
       - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
+    restart: always
     depends_on:
-      - frontend
       - kong
 
 volumes:
   db_data:
-  caddy_data:
-  caddy_config:
 EOF
 
 echo "  ✅ docker-compose.prod.yml generiert"
-echo ""
-
-# ------------------------------------------------------------
-# Caddyfile generieren (HTTPS automatisch)
-# ------------------------------------------------------------
-echo "▶ Generiere Caddyfile..."
-
-cat > Caddyfile << EOF
-${DOMAIN} {
-    # Frontend
-    reverse_proxy frontend:80
-
-    # API (PostgREST via Kong)
-    handle /rest/v1/* {
-        reverse_proxy kong:8000
-    }
-
-    # Realtime WebSocket via Kong
-    handle /realtime/v1/* {
-        reverse_proxy kong:8000
-    }
-
-    # Security Headers
-    header {
-        X-Frame-Options "SAMEORIGIN"
-        X-Content-Type-Options "nosniff"
-        X-XSS-Protection "1; mode=block"
-        Referrer-Policy "strict-origin-when-cross-origin"
-    }
-
-    encode gzip
-}
-EOF
-
-echo "  ✅ Caddyfile generiert (HTTPS automatisch via Let's Encrypt)"
 echo ""
 
 # ------------------------------------------------------------
@@ -422,7 +377,7 @@ echo ""
 # .gitignore sicherstellen
 # ------------------------------------------------------------
 echo "▶ Aktualisiere .gitignore..."
-for f in ".env" ".env.prod" "Caddyfile" "docker-compose.prod.yml" "scripts/init-realtime.sh"; do
+for f in ".env" ".env.prod" "docker-compose.prod.yml" "scripts/init-realtime.sh"; do
     grep -qxF "$f" .gitignore 2>/dev/null || echo "$f" >> .gitignore
 done
 echo "  ✅ .gitignore aktualisiert"
@@ -435,29 +390,30 @@ echo "╔═══════════════════════�
 echo "║                    SETUP ABGESCHLOSSEN               ║"
 echo "╚══════════════════════════════════════════════════════╝"
 echo ""
-echo "  Domain:      https://${DOMAIN}"
+echo "  Frontend:    http://${DOMAIN}"
+echo "  API:         http://${DOMAIN}:8000"
 echo "  Admin PW:    ${ADMIN_PASSWORD}"
 echo ""
 echo "  Generierte Dateien:"
 echo "    ✅ .env"
 echo "    ✅ scripts/init-realtime.sh"
 echo "    ✅ docker-compose.prod.yml"
-echo "    ✅ Caddyfile"
 echo ""
 echo "  Nächste Schritte:"
 echo ""
-echo "  1. Stelle sicher dass deine Domain auf diesen Server zeigt"
-echo "  2. Starte die App:"
+echo "  1. Starte die App:"
 echo ""
 echo "     docker compose -f docker-compose.prod.yml up -d --build"
 echo ""
-echo "  3. Initialisiere die Datenbank (einmalig):"
+echo "  2. Initialisiere die Datenbank (einmalig):"
 echo ""
 echo "     docker exec -i sponsoring-wall-db psql -U postgres -d postgres < supabase/init-db.sql"
 echo "     docker exec -i sponsoring-wall-db psql -U supabase_admin -d postgres -c \"GRANT ALL ON SCHEMA realtime TO postgres; ALTER SCHEMA realtime OWNER TO postgres; GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA realtime TO postgres; GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA realtime TO postgres;\""
 echo "     docker exec -i sponsoring-wall-db psql -U supabase_admin -d postgres -c \"ALTER USER postgres WITH SUPERUSER;\""
 echo ""
-echo "  4. Öffne https://${DOMAIN}"
+echo "  3. Nginx Proxy Manager konfigurieren:"
+echo "     - Frontend: http://sponsoring-wall-frontend-1:80"
+echo "     - API:      http://sponsoring-wall-kong:8000"
 echo ""
 echo "  ⚠️  WICHTIG: .env und die generierten Dateien NIEMALS ins Git committen!"
 echo ""
