@@ -345,7 +345,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - VITE_SUPABASE_URL=http://\${DOMAIN}:8000
+        - VITE_SUPABASE_URL=https://\${DOMAIN}
         - VITE_SUPABASE_ANON_KEY=\${ANON_KEY}
         - VITE_ADMIN_PASSWORD=\${ADMIN_PASSWORD}
     ports:
