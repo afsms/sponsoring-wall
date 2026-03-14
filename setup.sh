@@ -119,8 +119,8 @@ except ImportError:
     except ImportError:
         subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pycryptodome', '-q'])
         from Cryptodome.Cipher import AES
-        
-import basae64
+
+import base64
 
 key = b'${DB_ENC_KEY}'
 
