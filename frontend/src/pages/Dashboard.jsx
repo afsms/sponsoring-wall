@@ -43,13 +43,15 @@ const Dashboard = () => {
 
             if (data && !error) {
                 const totalSq = data.reduce((sum, item) => sum + Number(item.sq_meters || 0), 0);
-                const totalAmt = data.reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
+                const totalAmtBank = data.filter(s => s.iban !== 'CASH').reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
+                const totalAmtCash = data.filter(s => s.iban === 'CASH').reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
                 const initialIndices = Array.from({ length: totalSq }, (_, i) => i);
 
                 setStats({
                     totalSponsors: data.length,
                     totalSqMeters: totalSq,
-                    totalAmount: totalAmt,
+                    totalAmount: totalAmtBank,
+                    totalAmountCash: totalAmtCash,
                     bookedIndices: initialIndices
                 });
 
@@ -90,9 +92,15 @@ const Dashboard = () => {
                 }
 
                 return {
+                    ...prev,
                     totalSponsors: prev.totalSponsors + 1,
                     totalSqMeters: newTotal,
-                    totalAmount: prev.totalAmount + Number(data.total_amount || 0),
+                    totalAmount: data.iban !== 'CASH'
+                        ? prev.totalAmount + Number(data.total_amount || 0)
+                        : prev.totalAmount,
+                    totalAmountCash: data.iban === 'CASH'
+                        ? prev.totalAmountCash + Number(data.total_amount || 0)
+                        : prev.totalAmountCash,
                     bookedIndices: Array.from({ length: newTotal }, (_, i) => i)
                 };
             });
@@ -104,12 +112,12 @@ const Dashboard = () => {
     const { minifiedUnits, activeUnits } = useMemo(() => {
         const bookedCount = stats.bookedIndices.length;
         const cappedBooked = Math.min(bookedCount, BASE_GOAL);
-        
+
         // If we reached the goal, archive everything
         if (bookedCount >= BASE_GOAL) {
-            return { 
-                minifiedUnits: Array.from({ length: BASE_GOAL }, (_, i) => i), 
-                activeUnits: [] 
+            return {
+                minifiedUnits: Array.from({ length: BASE_GOAL }, (_, i) => i),
+                activeUnits: []
             };
         }
 
@@ -233,8 +241,8 @@ const Dashboard = () => {
                                             boxShadow: '0 0 30px rgba(16,185,129,0.25)'
                                         }}
                                     >
-                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent" 
-                                             style={{ animation: 'shimmer 2s infinite linear', backgroundSize: '200% 100%' }} />
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                                            style={{ animation: 'shimmer 2s infinite linear', backgroundSize: '200% 100%' }} />
                                     </motion.div>
 
                                     {/* Moschee Kauf (Gold) - only when goal reached */}
@@ -249,8 +257,8 @@ const Dashboard = () => {
                                                 boxShadow: '0 0 25px rgba(201,168,76,0.3)'
                                             }}
                                         >
-                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent" 
-                                                 style={{ animation: 'shimmer 2.5s infinite linear', backgroundSize: '200% 100%' }} />
+                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent"
+                                                style={{ animation: 'shimmer 2.5s infinite linear', backgroundSize: '200% 100%' }} />
                                         </motion.div>
                                     )}
                                 </div>
@@ -346,7 +354,7 @@ const Dashboard = () => {
                                     <div className="absolute top-6 right-6 w-8 h-8 border-r border-t border-emerald-800/15 rounded-tr-lg" />
                                     <div className="absolute bottom-6 left-6 w-8 h-8 border-l border-b border-emerald-800/15 rounded-bl-lg" />
                                     <div className="absolute bottom-6 right-6 w-8 h-8 border-r border-b border-emerald-800/15 rounded-br-lg" />
-                                    
+
                                     <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-emerald-500/[0.03] blur-[120px] rounded-full" />
 
                                     {activeUnits.map((idx) => (

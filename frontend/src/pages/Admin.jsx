@@ -11,7 +11,8 @@ export default function Admin() {
   const [donationStatus, setDonationStatus] = useState('');
 
   const [sponsors, setSponsors] = useState([]);
-
+  console.log("URL:", import.meta.env.VITE_SUPABASE_URL);
+  console.log("KEY:", import.meta.env.VITE_SUPABASE_ANON_KEY);
   useEffect(() => {
     // Einfacher Passwortschutz
     if (token === 'admin123') {
@@ -50,9 +51,7 @@ export default function Admin() {
 
   const calculateSqMeters = (amount) => {
     if (!amount) return 0;
-    // 1 Quadratmeter kostet pricePerUnit pro Monat. Im Jahr also pricePerUnit * 12
-    const yearlyCost = pricePerUnit * 12;
-    // Wie viele QM bekommt man für 'amount'?
+    const yearlyCost = pricePerUnit * 12;  // war: pricePerUnit
     return Math.floor(amount / yearlyCost);
   };
 
@@ -96,8 +95,8 @@ export default function Admin() {
   };
 
   const handleSaveDonation = async () => {
-    if (sqMetersCalc <= 0) {
-      alert('Der Betrag reicht nicht für mindestens einen Quadratmeter oder ist ungültig.');
+    if (!cashAmount || parseFloat(cashAmount) <= 0) {
+      alert('Bitte gib einen gültigen Betrag ein.');
       return;
     }
 
@@ -107,7 +106,7 @@ export default function Admin() {
       phone: '',
       iban: 'CASH',
       mandate_accepted: true,
-      sq_meters: sqMetersCalc,
+      sq_meters: sqMetersCalc,  // kann 0 sein
       total_amount: parseFloat(cashAmount),
       is_anonymous: false
     };
@@ -211,7 +210,7 @@ export default function Admin() {
 
               <button
                 onClick={handleSaveDonation}
-                disabled={sqMetersCalc <= 0}
+                disabled={!cashAmount || parseFloat(cashAmount) <= 0}
                 className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:bg-gray-700 disabled:text-gray-500 disabled:shadow-none text-white font-bold py-4 px-4 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)] transition-all duration-200"
               >
                 Spende in Datenbank speichern

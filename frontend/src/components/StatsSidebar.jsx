@@ -31,7 +31,8 @@ const StatsSidebar = ({ data, goal }) => {
     const displaySq = Math.min(totalSq, targetGoal);
     const overflowM2 = Math.max(0, totalSq - targetGoal);
     // Use actual amounts from DB × 12 for yearly
-    const donationTotal = totalAmount * 12;
+    const donationTotal = (Number(data?.totalAmount || 0) * 12) + Number(data?.totalAmountCash || 0);
+
     const kaufTotal = overflowM2 * 15 * 12;
 
     return (
