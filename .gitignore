@@ -45,3 +45,7 @@ load-test.js
 
 # Docker volumes
 db_data/
+.env.prod
+Caddyfile
+docker-compose.prod.yml
+scripts/init-realtime.sh

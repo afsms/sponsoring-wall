@@ -32,7 +32,7 @@ const StatsSidebar = ({ data, goal }) => {
     const overflowM2 = Math.max(0, totalSq - targetGoal);
     // Use actual amounts from DB × 12 for yearly
     const donationTotal = (Number(data?.totalAmount || 0) * 12) + Number(data?.totalAmountCash || 0);
-
+    const cashTotal = Number(data?.totalAmountCash || 0);
     const kaufTotal = overflowM2 * 15 * 12;
 
     return (
@@ -73,6 +73,8 @@ const StatsSidebar = ({ data, goal }) => {
                     color="text-emerald-400"
                     delay={0.3}
                 />
+
+
 
                 {/* Moschee Kauf - only when goal reached */}
                 {goalReached && overflowM2 > 0 && (

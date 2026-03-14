@@ -175,7 +175,7 @@ SECRET_KEY_BASE=${SECRET_KEY_BASE}
 # --- FRONTEND ---
 VITE_SUPABASE_URL=https://${DOMAIN}
 VITE_SUPABASE_ANON_KEY=${ANON_KEY}
-
+VITE_ADMIN_PASSWORD=${ADMIN_PASSWORD}
 # --- ADMIN ---
 ADMIN_PASSWORD=${ADMIN_PASSWORD}
 
@@ -340,6 +340,7 @@ services:
       args:
         - VITE_SUPABASE_URL=https://\${DOMAIN}
         - VITE_SUPABASE_ANON_KEY=\${ANON_KEY}
+        - VITE_ADMIN_PASSWORD=\${ADMIN_PASSWORD}
     restart: always
     depends_on:
       - kong
@@ -445,7 +446,7 @@ echo ""
 echo "  1. Stelle sicher dass deine Domain auf diesen Server zeigt"
 echo "  2. Starte die App:"
 echo ""
-echo "     docker compose -f docker-compose.prod.yml up -d"
+echo "     docker compose -f docker-compose.prod.yml up -d --build"
 echo ""
 echo "  3. Initialisiere die Datenbank (einmalig):"
 echo ""

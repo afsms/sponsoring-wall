@@ -11,11 +11,11 @@ export default function Admin() {
   const [donationStatus, setDonationStatus] = useState('');
 
   const [sponsors, setSponsors] = useState([]);
-  console.log("URL:", import.meta.env.VITE_SUPABASE_URL);
-  console.log("KEY:", import.meta.env.VITE_SUPABASE_ANON_KEY);
+  const ADMIN_PW = import.meta.env.VITE_ADMIN_PASSWORD || 'admin123';
+
   useEffect(() => {
     // Einfacher Passwortschutz
-    if (token === 'admin123') {
+    if (token === ADMIN_PW) {
       setIsAuthenticated(true);
       fetchSettings();
       fetchSponsors();
@@ -25,7 +25,8 @@ export default function Admin() {
   const handleLogin = (e) => {
     e.preventDefault();
     const inputToken = e.target.token.value;
-    if (inputToken === 'admin123') {
+
+    if (inputToken === ADMIN_PW) {
       localStorage.setItem('adminToken', inputToken);
       setToken(inputToken);
     } else {
@@ -298,9 +299,7 @@ export default function Admin() {
           </div>
         </div>
 
-        <div className="mt-8 text-center text-gray-600 text-xs">
-          Das Admin Token lautet für diesen Prototyp "admin123".
-        </div>
+
       </div>
     </div>
   );

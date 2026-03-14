@@ -15,11 +15,11 @@ COPY . .
 # Build-time environment variables (injected via docker-compose build args)
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_ANON_KEY
+ARG VITE_ADMIN_PASSWORD
 
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
 ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
-
-RUN echo "Building with URL: $VITE_SUPABASE_URL"
+ENV VITE_ADMIN_PASSWORD=$VITE_ADMIN_PASSWORD
 
 # Build the application
 RUN npm run build

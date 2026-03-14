@@ -122,11 +122,11 @@ const Register = () => {
                 <div className="bg-[#0c151a] p-12 text-white flex flex-col justify-between relative overflow-hidden">
                     <div className="relative z-10">
                         <div className="inline-block px-4 py-1.5 bg-white/10 rounded-full text-xs font-bold tracking-[0.2em] uppercase mb-8 border border-white/10">
-                            Sajadah Spendenaktion
+                            Moschee Spendenaktion
                         </div>
                         <h1 className="text-5xl font-black mb-6 leading-[1.1] uppercase">Ein Teil der Moschee werden</h1>
                         <p className="text-gray-400 text-lg leading-relaxed mb-8">
-                            Sichern Sie sich einen oder mehrere Quadratmeter des neuen Teppichs und hinterlassen Sie ein bleibendes Erbe.
+                            Sichern Sie sich einen oder mehrere Quadratmeter der Gebetsfläche unserer Moschee und hinterlassen Sie ein bleibendes Erbe.
                         </p>
                         <div className="flex items-center space-x-4 bg-white/5 p-4 rounded-2xl border border-white/5">
                             <div className="text-green-400 font-black text-2xl">15€</div>
@@ -137,8 +137,8 @@ const Register = () => {
                         <div className="flex items-center space-x-4">
                             <Building2 className="w-8 h-8 text-gray-500" />
                             <div>
-                                <div className="font-bold uppercase tracking-widest text-xs opacity-50">Projekt</div>
-                                <div className="font-black text-sm">Moschee Teppich 2024</div>
+
+                                <div className="font-black text-sm">Al-Rahma Moschee Darmstadt</div>
                             </div>
                         </div>
                     </div>
