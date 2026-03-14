@@ -112,11 +112,13 @@ python3 -c "
 import sys
 sys.path.insert(0, '')
 try:
-    from Crypto.Cipher import AES
+    sed -i 's/from Crypto.Cipher import AES/try:\n    from Crypto.Cipher import AES\nexcept ImportError:\n    from Cryptodome.Cipher import AES/' setup.sh
+O
 except ImportError:
     import subprocess
     subprocess.check_call(['pip3', 'install', 'pycryptodome', '-q'])
-    from Crypto.Cipher import AES
+    sed -i 's/from Crypto.Cipher import AES/try:\n    from Crypto.Cipher import AES\nexcept ImportError:\n    from Cryptodome.Cipher import AES/' setup.sh
+O
 import base64
 
 key = b'${DB_ENC_KEY}'
